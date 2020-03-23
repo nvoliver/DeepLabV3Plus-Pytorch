@@ -5,6 +5,13 @@ from .backbone import mobilenetv2
 
 def _segm_resnet(name, backbone_name, num_classes, output_stride, pretrained_backbone):
 
+    # Modifcation: Option to override dilation
+    override_dilation = None
+    if isinstance(output_stride, (list, tuple)):
+        output_stride, override_dilation = output_stride
+        assert isinstance(override_dilation, (list, tuple))
+        assert len(override_dilation) == 3
+
     if output_stride==8:
         replace_stride_with_dilation=[False, True, True]
         aspp_dilate = [12, 24, 36]
@@ -12,10 +19,13 @@ def _segm_resnet(name, backbone_name, num_classes, output_stride, pretrained_bac
         replace_stride_with_dilation=[False, False, True]
         aspp_dilate = [6, 12, 18]
 
+    # Modifcation: Option to override dilation
+    aspp_dilate = override_dilation or aspp_dilate
+
     backbone = resnet.__dict__[backbone_name](
         pretrained=pretrained_backbone,
         replace_stride_with_dilation=replace_stride_with_dilation)
-    
+
     inplanes = 2048
     low_level_planes = 256
 
@@ -37,7 +47,7 @@ def _segm_mobilenet(name, backbone_name, num_classes, output_stride, pretrained_
         aspp_dilate = [6, 12, 18]
 
     backbone = mobilenetv2.mobilenet_v2(pretrained=pretrained_backbone, output_stride=output_stride)
-    
+
     # rename layers
     backbone.low_level_features = backbone.features[0:4]
     backbone.high_level_features = backbone.features[4:-1]
@@ -46,7 +56,7 @@ def _segm_mobilenet(name, backbone_name, num_classes, output_stride, pretrained_
 
     inplanes = 320
     low_level_planes = 24
-    
+
     if name=='deeplabv3plus':
         return_layers = {'high_level_features': 'out', 'low_level_features': 'low_level'}
         classifier = DeepLabHeadV3Plus(inplanes, low_level_planes, num_classes, aspp_dilate)

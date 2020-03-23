@@ -9,9 +9,10 @@ class _SimpleSegmentationModel(nn.Module):
         super(_SimpleSegmentationModel, self).__init__()
         self.backbone = backbone
         self.classifier = classifier
-        
+
     def forward(self, x):
-        input_shape = x.shape[-2:]
+        # Modification: Enable easier ONNX export
+        input_shape = tuple(torch.tensor(x.shape[-2:]).detach().numpy())
         features = self.backbone(x)
         x = self.classifier(features)
         x = F.interpolate(x, size=input_shape, mode='bilinear', align_corners=False)

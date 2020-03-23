@@ -28,7 +28,7 @@ class DeepLabV3(_SimpleSegmentationModel):
 class DeepLabHeadV3Plus(nn.Module):
     def __init__(self, in_channels, low_level_channels, num_classes, aspp_dilate=[12, 24, 36]):
         super(DeepLabHeadV3Plus, self).__init__()
-        self.project = nn.Sequential( 
+        self.project = nn.Sequential(
             nn.Conv2d(low_level_channels, 48, 1, bias=False),
             nn.BatchNorm2d(48),
             nn.ReLU(inplace=True),
@@ -49,7 +49,7 @@ class DeepLabHeadV3Plus(nn.Module):
         output_feature = self.aspp(feature['out'])
         output_feature = F.interpolate(output_feature, size=low_level_feature.shape[2:], mode='bilinear', align_corners=False)
         return self.classifier( torch.cat( [ low_level_feature, output_feature ], dim=1 ) )
-    
+
     def _init_weight(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -94,7 +94,7 @@ class AtrousSeparableConvolution(nn.Module):
             # PointWise Conv
             nn.Conv2d( in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=bias),
         )
-        
+
         self._init_weight()
 
     def forward(self, x):
@@ -126,9 +126,14 @@ class ASPPPooling(nn.Sequential):
             nn.ReLU(inplace=True))
 
     def forward(self, x):
-        size = x.shape[-2:]
+
+        # Modification: Enable easier ONNX export
+        # size = x.shape[-2:]
+        size = tuple(torch.tensor(x.shape[-2:]).detach().numpy())
         x = super(ASPPPooling, self).forward(x)
-        return F.interpolate(x, size=size, mode='bilinear', align_corners=False)
+        # Modification: Switch to Neareast-Neighbor interpolation (no measured impact on accuracy)
+        # return F.interpolate(x, size=size, mode='bilinear', align_corners=False)
+        return F.interpolate(x, size=size, mode='nearest')
 
 class ASPP(nn.Module):
     def __init__(self, in_channels, atrous_rates):
@@ -167,7 +172,7 @@ def convert_to_separable_conv(module):
     new_module = module
     if isinstance(module, nn.Conv2d) and module.kernel_size[0]>1:
         new_module = AtrousSeparableConvolution(module.in_channels,
-                                      module.out_channels, 
+                                      module.out_channels,
                                       module.kernel_size,
                                       module.stride,
                                       module.padding,
