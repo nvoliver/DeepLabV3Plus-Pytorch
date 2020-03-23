@@ -131,7 +131,7 @@ class ASPPPooling(nn.Sequential):
         # size = x.shape[-2:]
         size = tuple(torch.tensor(x.shape[-2:]).detach().numpy())
         x = super(ASPPPooling, self).forward(x)
-        # Modification: Switch to Neareast-Neighbor interpolation (no measured impact on accuracy)
+        # Modification: Switch to Nearest-Neighbor interpolation (no measured impact on accuracy)
         # return F.interpolate(x, size=size, mode='bilinear', align_corners=False)
         return F.interpolate(x, size=size, mode='nearest')
 
